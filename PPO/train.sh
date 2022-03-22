@@ -1,0 +1,1 @@
+python main.py --name PPO --n_envs 8 --seed 1 --clip_value 0.05 --n_steps 8000 --batch_size 8000 --lr 0.001 --no_slack

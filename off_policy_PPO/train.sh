@@ -1,0 +1,1 @@
+python main.py --name Off-Policy-PPO --n_envs 8 --seed 1 --clip_value 0.05 --n_steps 8000 --batch_size 1000 --no_slack

@@ -1,0 +1,1 @@
+python main.py --name TRPO --test --n_envs 1
