@@ -17,4 +17,4 @@ This is a simple implemenation of off-policy TRPO ([link](https://ieeexplore.iee
 ### HalfCheetah-v2
 ![img](./imgs/Half-Cheetah_score%26v_loss%26entropy.png)
 - obtained by training with three seeds.
-- {algo_name}-Norm: training results with state normalization.
+- {algo_name}-Norm: training with state normalization.
