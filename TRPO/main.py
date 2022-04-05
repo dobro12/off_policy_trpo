@@ -34,8 +34,8 @@ import gym
 def getPaser():
     parser = argparse.ArgumentParser(description='legged_robot')
     # common
-    parser.add_argument('--no_wandb',  action='store_true', help='not use wandb?')
-    parser.add_argument('--no_slack',  action='store_true', help='not use slack?')
+    parser.add_argument('--wandb',  action='store_true', help='use wandb?')
+    parser.add_argument('--slack',  action='store_true', help='use slack?')
     parser.add_argument('--test',  action='store_true', help='test or train?')
     parser.add_argument('--name', type=str, default='offpolicy_TRPO', help='save name.')
     parser.add_argument('--save_freq', type=int, default=int(1e6), help='# of time steps for save.')
@@ -67,7 +67,7 @@ def getPaser():
 
 def train(args):
     # wandb
-    if not args.no_wandb:
+    if args.wandb:
         project_name = '[off-policy-TRPO] mujoco'
         wandb.init(
             project=project_name, 
@@ -77,15 +77,14 @@ def train(args):
         wandb.run.name = f"{args.name}-{run_idx}"
 
     # slackbot
-    if not args.no_slack:
+    if args.slack:
         slackbot = Slackbot()
 
     # define env
     vec_env = make_vec_env(
         env_id=lambda: gym.make(args.env_name), n_envs=args.n_envs,
         vec_env_cls=DobroSubprocVecEnv,
-        # vec_env_kwargs={'args':args, 'start_method':'spawn'},
-        vec_env_kwargs={'args':args},
+        vec_env_kwargs={'args':args, 'start_method':'spawn'},
     )
 
     # set args value for env
@@ -163,11 +162,11 @@ def train(args):
             "train/kl":kl_logger.get_avg(), 
             "train/entropy":entropy_logger.get_avg(),
         }
-        if not args.no_wandb:
+        if args.wandb:
             wandb.log(log_data)
         print(log_data)
 
-        if total_step - slack_step >= args.slack_freq and not args.no_slack:
+        if args.slack and total_step - slack_step >= args.slack_freq:
             slackbot.sendMsg(f"{project_name}\nname: {wandb.run.name}\nsteps: {total_step}\nlog: {log_data}")
             slack_step += args.slack_freq
 
@@ -212,7 +211,6 @@ def test(args):
             with torch.no_grad():
                 obs_tensor = torch.tensor(obs, device=args.device, dtype=torch.float32)
                 action_tensor, clipped_action_tensor = agent.getAction(obs_tensor, False)
-                # action_tensor, clipped_action_tensor = agent.getAction(obs_tensor, True)
                 action = action_tensor.detach().cpu().numpy()
                 clipped_action = clipped_action_tensor.detach().cpu().numpy()
             obs, reward, done, info = env.step(clipped_action)

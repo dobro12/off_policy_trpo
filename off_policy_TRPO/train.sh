@@ -1,1 +1,3 @@
-python main.py --name Off-Policy-TRPO --seed 1 --n_envs 4 --n_steps 8000 --clip_value 0.9 --len_replay_buffer 100000 --no_slack
+python main.py --name OffTRPO --seed 1 --n_envs 25 --n_steps 5000 --wandb --gpu_idx 1
+python main.py --name OffTRPO --seed 2 --n_envs 25 --n_steps 5000 --wandb --gpu_idx 1
+python main.py --name OffTRPO --seed 3 --n_envs 25 --n_steps 5000 --wandb --gpu_idx 1

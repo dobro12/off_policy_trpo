@@ -109,12 +109,6 @@ class Agent:
         gaes = targets - values
         return gaes, targets
 
-    def getEntropy(self, states):
-        means, log_stds, stds = self.policy(states)
-        normal = torch.distributions.Normal(means, stds)
-        entropy = torch.mean(torch.sum(normal.entropy(), dim=1))
-        return entropy
-
     def train(self, trajs):
         for env_idx in range(self.n_envs):
             self.replay_buffer[env_idx] += deque(trajs[env_idx])
@@ -221,10 +215,10 @@ class Agent:
         # get objective & KL
         objective, entropy = self.getObjective(states_tensor, actions_tensor, gaes_tensor, old_means, old_stds, mu_means_tensor, mu_stds_tensor)
         cur_means, _, cur_stds = self.policy(states_tensor)
-        kl_original = self.getKL(old_means, old_stds, cur_means, cur_stds)
-        kl_old = self.getKL(mu_means_tensor, mu_stds_tensor, old_means, old_stds)
-        kl_old = torch.sqrt(kl_old*(self.max_kl + 0.25*kl_old)) - 0.5*kl_old
-        kl = kl_original + kl_old
+        kl = self.getKL(old_means, old_stds, cur_means, cur_stds)
+        kl_bonus = self.getKL(mu_means_tensor, mu_stds_tensor, old_means, old_stds)
+        kl_bonus = torch.sqrt(kl_bonus*(self.max_kl + 0.25*kl_bonus)) - 0.5*kl_bonus
+        max_kl = self.max_kl - kl_bonus
 
         # find search direction
         grad_g = flatGrad(objective, self.policy.parameters(), retain_graph=True)
@@ -233,7 +227,7 @@ class Agent:
         # line search
         Ax = self.Hx(kl, x_value)
         xAx = torch.dot(x_value, Ax)
-        beta = torch.sqrt(2.0*self.max_kl / xAx)
+        beta = torch.sqrt(2.0*max_kl/xAx)
         init_theta = torch.cat([t.view(-1) for t in self.policy.parameters()]).clone().detach()
         init_objective = objective.clone().detach()
         expected_improve = torch.dot(grad_g, x_value)
@@ -244,9 +238,8 @@ class Agent:
             improve = objective - init_objective
             improve_ratio = improve/(expected_improve*beta)
             cur_means, _, cur_stds = self.policy(states_tensor)
-            kl_original = self.getKL(old_means, old_stds, cur_means, cur_stds)
-            kl = kl_original + kl_old
-            if kl <= self.max_kl and (improve_ratio > self.improve_ratio and improve > 0.0):
+            kl = self.getKL(old_means, old_stds, cur_means, cur_stds)
+            if kl <= max_kl and (improve_ratio > self.improve_ratio and improve > 0.0):
                 break
             beta *= self.line_decay
         # ======================================= #

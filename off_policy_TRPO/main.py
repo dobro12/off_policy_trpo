@@ -32,10 +32,10 @@ import time
 import gym
 
 def getPaser():
-    parser = argparse.ArgumentParser(description='legged_robot')
+    parser = argparse.ArgumentParser(description='RL')
     # common
-    parser.add_argument('--no_wandb',  action='store_true', help='not use wandb?')
-    parser.add_argument('--no_slack',  action='store_true', help='not use slack?')
+    parser.add_argument('--wandb',  action='store_true', help='use wandb?')
+    parser.add_argument('--slack',  action='store_true', help='use slack?')
     parser.add_argument('--test',  action='store_true', help='test or train?')
     parser.add_argument('--name', type=str, default='offpolicy_TRPO', help='save name.')
     parser.add_argument('--save_freq', type=int, default=int(1e6), help='# of time steps for save.')
@@ -47,7 +47,7 @@ def getPaser():
     # for env
     parser.add_argument('--env_name', type=str, default='HalfCheetah-v2', help='gym environment name.')
     parser.add_argument('--max_episode_steps', type=int, default=1000, help='# of maximum episode steps.')
-    parser.add_argument('--n_envs', type=int, default=4, help='gym environment name.')
+    parser.add_argument('--n_envs', type=int, default=5, help='gym environment name.')
     parser.add_argument('--n_steps', type=int, default=5000, help='# of steps for each environment per update.')
     parser.add_argument('--len_replay_buffer', type=int, default=50000, help='length of replay buffer.')
     # for networks
@@ -67,13 +67,13 @@ def getPaser():
     parser.add_argument('--num_conjugate', type=int, default=10, help='# of maximum conjugate step.')
     parser.add_argument('--line_decay', type=float, default=0.8, help='line decay.')
     parser.add_argument('--max_kl', type=float, default=0.01, help='maximum kl divergence.')
-    parser.add_argument('--clip_value', type=float, default=-1, help='clip value for importance sampling.')
+    parser.add_argument('--clip_value', type=float, default=0.9, help='clip value for importance sampling.')
     parser.add_argument('--improve_ratio', type=float, default=0.1, help='improve ratio for line search.')
     return parser
 
 def train(args):
     # wandb
-    if not args.no_wandb:
+    if args.wandb:
         project_name = '[off-policy-TRPO] mujoco'
         wandb.init(
             project=project_name, 
@@ -83,7 +83,7 @@ def train(args):
         wandb.run.name = f"{args.name}-{run_idx}"
 
     # slackbot
-    if not args.no_slack:
+    if args.slack:
         slackbot = Slackbot()
 
     # define env
@@ -169,11 +169,11 @@ def train(args):
             "train/kl":kl_logger.get_avg(), 
             "train/entropy":entropy_logger.get_avg(),
         }
-        if not args.no_wandb:
+        if args.wandb:
             wandb.log(log_data)
         print(log_data)
 
-        if total_step - slack_step >= args.slack_freq and not args.no_slack:
+        if total_step - slack_step >= args.slack_freq and args.slack:
             slackbot.sendMsg(f"{project_name}\nname: {wandb.run.name}\nsteps: {total_step}\nlog: {log_data}")
             slack_step += args.slack_freq
 
@@ -237,6 +237,8 @@ if __name__ == "__main__":
     # ==== processing args ==== #
     # save_dir
     args.save_dir = f"results/{args.name}_s{args.seed}"
+    # set gpu
+    os.environ["CUDA_VISIBLE_DEVICES"]=f"{args.gpu_idx}"
     # device
     if torch.cuda.is_available() and args.device == 'gpu':
         device = torch.device('cuda:0')
@@ -245,8 +247,6 @@ if __name__ == "__main__":
         device = torch.device('cpu')
         print('[torch] cpu is used.')
     args.device = device
-    # set gpu
-    os.environ["CUDA_VISIBLE_DEVICES"]=f"{args.gpu_idx}"
     # ========================= #
 
     if args.test:
