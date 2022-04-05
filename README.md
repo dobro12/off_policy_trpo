@@ -8,7 +8,13 @@ This is a simple implemenation of off-policy TRPO ([link](https://ieeexplore.iee
 - gym
 - mujoco-py (https://github.com/openai/mujoco-py)
 - stable-baselines3
-- torch==1.10.0
+- torch==1.10.0 or greater
 - requests
 - wandb
 
+## results
+
+### HalfCheetah-v2
+![img](./imgs/Half-Cheetah_score%26v_loss%26entropy.png)
+- obtained by training with three seeds.
+- {algo_name}-Norm: training results with state normalization.

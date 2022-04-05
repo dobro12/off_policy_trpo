@@ -1,3 +1,4 @@
+from operator import is_
 import matplotlib.pyplot as plt
 from matplotlib import rc
 from copy import deepcopy
@@ -11,19 +12,31 @@ def main():
     fig_size = 4
     window_size = 500
     interp_steps = 1000
-    item_list = ['score', 'entropy']
+    item_list = ['score', 'v_loss', 'entropy']
 
     env_name = "Half-Cheetah"
     algo_list = []
     algo_list.append({
         'name': 'TRPO',
-        'logs': [f'TRPO/results/TRPO_s{i}' for i in [1]]
+        'logs': [f'TRPO/results/TRPO_s{i}' for i in [1, 2, 3]]
+    })
+    algo_list.append({
+        'name': 'TRPO-Norm',
+        'logs': [f'TRPO/results/TRPO2_s{i}' for i in [1, 2, 3]]
     })
     algo_list.append({
         'name': 'OffTRPO',
-        'logs': [f'off_policy_TRPO/results/Off-Policy-TRPO_s{i}' for i in [2]]
+        'logs': [f'off_policy_TRPO/results/OffTRPO_s{i}' for i in [1, 2, 3]]
     })
-    draw(env_name, item_list, algo_list, fig_size, window_size, interp_steps)
+    algo_list.append({
+        'name': 'OffTRPO-Norm',
+        'logs': [f'off_policy_TRPO/results/OffTRPO2_s{i}' for i in [1, 2, 3]]
+    })
+    algo_list.append({
+        'name': 'OffTRPO-Norm-Noclip',
+        'logs': [f'off_policy_TRPO/results/OffTRPO3_s{i}' for i in [1, 2, 3]]
+    })
+    draw(env_name, item_list, algo_list, fig_size, window_size, interp_steps, is_horizon=True)
 
 
 
