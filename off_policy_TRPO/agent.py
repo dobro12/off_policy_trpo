@@ -72,7 +72,6 @@ class Agent:
         self.max_kl = args.max_kl
         self.line_decay = args.line_decay
         self.clip_value = args.clip_value
-        self.improve_ratio = args.improve_ratio
         # for networks
         self.policy = Policy(args).to(args.device)
         self.value = Value(args).to(args.device)
@@ -230,16 +229,13 @@ class Agent:
         beta = torch.sqrt(2.0*max_kl/xAx)
         init_theta = torch.cat([t.view(-1) for t in self.policy.parameters()]).clone().detach()
         init_objective = objective.clone().detach()
-        expected_improve = torch.dot(grad_g, x_value)
         while True:
             theta = beta*x_value + init_theta
             self.applyParams(theta)
             objective, entropy = self.getObjective(states_tensor, actions_tensor, gaes_tensor, old_means, old_stds, mu_means_tensor, mu_stds_tensor)
-            improve = objective - init_objective
-            improve_ratio = improve/(expected_improve*beta)
             cur_means, _, cur_stds = self.policy(states_tensor)
             kl = self.getKL(old_means, old_stds, cur_means, cur_stds)
-            if kl <= max_kl and (improve_ratio > self.improve_ratio and improve > 0.0):
+            if kl <= max_kl and objective > init_objective:
                 break
             beta *= self.line_decay
         # ======================================= #
@@ -249,7 +245,7 @@ class Agent:
             value_loss = torch.mean(torch.square(self.value(states_tensor) - targets_tensor))
             self.optimizer.zero_grad()
             value_loss.backward()
-            torch.nn.utils.clip_grad_norm_(self.value.parameters(), self.max_grad_norm)
+            # torch.nn.utils.clip_grad_norm_(self.value.parameters(), self.max_grad_norm)
             self.optimizer.step()
         # ======================================== #
 

@@ -85,7 +85,7 @@ def train(args):
 
     # define env
     vec_env = make_vec_env(
-        env_id=lambda: gym.make(args.env_name), n_envs=args.n_envs,
+        env_id=lambda: gym.make(args.env_name), n_envs=args.n_envs, seed=args.seed,
         vec_env_cls=DobroSubprocVecEnv,
         vec_env_kwargs={'args':args, 'start_method':'spawn'},
     )

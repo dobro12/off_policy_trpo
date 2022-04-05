@@ -8,7 +8,7 @@ EPS = 1e-8
 
 def initWeights(m, init_bias=0.0):
     if isinstance(m, torch.nn.Linear):
-        m.weight.data.normal_(0, 0.01)
+        nn.init.kaiming_normal_(m.weight.data, mode='fan_in', nonlinearity='relu')
         m.bias.data.normal_(init_bias, 0.01)
 
 class Policy(nn.Module):

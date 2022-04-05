@@ -58,6 +58,7 @@ def getPaser():
     parser.add_argument('--lr', type=float, default=1e-3, help='learning rate.')
     parser.add_argument('--n_epochs', type=int, default=10, help='update epochs.')
     parser.add_argument('--gae_coeff', type=float, default=0.97, help='gae coefficient.')
+    parser.add_argument('--ent_coeff', type=float, default=0.0, help='entropy coefficient.')
     # trust region
     parser.add_argument('--damping_coeff', type=float, default=0.01, help='damping coefficient.')
     parser.add_argument('--num_conjugate', type=int, default=10, help='# of maximum conjugate step.')
@@ -82,7 +83,7 @@ def train(args):
 
     # define env
     vec_env = make_vec_env(
-        env_id=lambda: gym.make(args.env_name), n_envs=args.n_envs,
+        env_id=lambda: gym.make(args.env_name), n_envs=args.n_envs, seed=args.seed,
         vec_env_cls=DobroSubprocVecEnv,
         vec_env_kwargs={'args':args, 'start_method':'spawn'},
     )
@@ -229,6 +230,8 @@ if __name__ == "__main__":
     # ==== processing args ==== #
     # save_dir
     args.save_dir = f"results/{args.name}_s{args.seed}"
+    # set gpu
+    os.environ["CUDA_VISIBLE_DEVICES"]=f"{args.gpu_idx}"
     # device
     if torch.cuda.is_available() and args.device == 'gpu':
         device = torch.device('cuda:0')
@@ -237,8 +240,6 @@ if __name__ == "__main__":
         device = torch.device('cpu')
         print('[torch] cpu is used.')
     args.device = device
-    # set gpu
-    os.environ["CUDA_VISIBLE_DEVICES"]=f"{args.gpu_idx}"
     # ========================= #
 
     if args.test:

@@ -26,6 +26,10 @@ class RunningMeanStd(object):
         batch_count = arr.shape[0]
         self.update_from_moments(batch_mean, batch_var, batch_count)
 
+        # # just not to use normalize!
+        # self.mean = np.zeros_like(batch_mean)
+        # self.var = np.ones_like(batch_var)
+
     def update_from_moments(self, batch_mean, batch_var, batch_count):
         delta = batch_mean - self.mean
         tot_count = self.count + batch_count

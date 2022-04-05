@@ -67,8 +67,7 @@ def getPaser():
     parser.add_argument('--num_conjugate', type=int, default=10, help='# of maximum conjugate step.')
     parser.add_argument('--line_decay', type=float, default=0.8, help='line decay.')
     parser.add_argument('--max_kl', type=float, default=0.01, help='maximum kl divergence.')
-    parser.add_argument('--clip_value', type=float, default=0.9, help='clip value for importance sampling.')
-    parser.add_argument('--improve_ratio', type=float, default=0.1, help='improve ratio for line search.')
+    parser.add_argument('--clip_value', type=float, default=1.0, help='clip value for importance sampling.')
     return parser
 
 def train(args):
@@ -88,7 +87,7 @@ def train(args):
 
     # define env
     vec_env = make_vec_env(
-        env_id=lambda: gym.make(args.env_name), n_envs=args.n_envs,
+        env_id=lambda: gym.make(args.env_name), n_envs=args.n_envs, seed=args.seed,
         vec_env_cls=DobroSubprocVecEnv,
         vec_env_kwargs={'args':args, 'start_method':'spawn'},
     )
@@ -101,6 +100,12 @@ def train(args):
 
     # define agent
     agent = Agent(args)
+
+    # to initialize state normalization
+    vec_env.reset()
+    for _ in range(10000):
+        random_actions = [vec_env.action_space.sample() for _ in range(args.n_envs)]
+        vec_env.step(random_actions)
 
     # for log
     objective_logger = Logger(args.save_dir, 'objective')
@@ -218,7 +223,6 @@ def test(args):
             with torch.no_grad():
                 obs_tensor = torch.tensor(obs, device=args.device, dtype=torch.float32)
                 action_tensor, clipped_action_tensor = agent.getAction(obs_tensor, False)
-                # action_tensor, clipped_action_tensor = agent.getAction(obs_tensor, True)
                 action = action_tensor.detach().cpu().numpy()
                 clipped_action = clipped_action_tensor.detach().cpu().numpy()
             obs, reward, done, info = env.step(clipped_action)

@@ -59,6 +59,7 @@ class Agent:
         self.action_bound_max = torch.tensor(args.action_bound_max, device=args.device)
         # for training
         self.gae_coeff = args.gae_coeff
+        self.ent_coeff = args.ent_coeff
         self.lr = args.lr
         self.value_epochs = args.n_epochs
         # for trust region
@@ -118,19 +119,6 @@ class Agent:
         gaes = targets - values
         return gaes, targets
 
-    def getEntropy(self, states:torch.Tensor) -> torch.Tensor:
-        '''
-        return scalar tensor for entropy value.
-        input:
-            states:     Tensor(n_steps, state_dim)
-        output:
-            entropy:    Tensor(,)
-        '''
-        means, log_stds, stds = self.policy(states)
-        normal = torch.distributions.Normal(means, stds)
-        entropy = torch.mean(torch.sum(normal.entropy(), dim=1))
-        return entropy
-
     def train(self, trajs):
         # convert to numpy array
         states_list = []
@@ -174,9 +162,6 @@ class Agent:
         gaes_tensor = torch.tensor(gaes, device=self.device, dtype=torch.float32)
         targets_tensor = torch.tensor(targets, device=self.device, dtype=torch.float32)
 
-        # get entropy
-        entropy = self.getEntropy(states_tensor)
-
         # ========== for policy update ========== #
         # backup old policy
         with torch.no_grad():
@@ -185,7 +170,7 @@ class Agent:
             old_stds = stds.clone().detach()
 
         # get objective & KL
-        objective = self.getObjective(states_tensor, norm_actions_tensor, gaes_tensor, old_means, old_stds)
+        objective, entropy = self.getObjective(states_tensor, norm_actions_tensor, gaes_tensor, old_means, old_stds)
         kl = self.getKL(states_tensor, old_means, old_stds)
 
         # find search direction
@@ -201,7 +186,7 @@ class Agent:
         while True:
             theta = beta*x_value + init_theta
             self.applyParams(theta)
-            objective = self.getObjective(states_tensor, norm_actions_tensor, gaes_tensor, old_means, old_stds)
+            objective, entropy = self.getObjective(states_tensor, norm_actions_tensor, gaes_tensor, old_means, old_stds)
             kl = self.getKL(states_tensor, old_means, old_stds)
             if kl <= self.max_kl and objective > init_objective:
                 break
@@ -229,8 +214,10 @@ class Agent:
         old_dist = torch.distributions.Normal(old_means, old_stds)
         log_probs = torch.sum(dist.log_prob(norm_actions), dim=1)
         old_log_probs = torch.sum(old_dist.log_prob(norm_actions), dim=1)
+        entropy = torch.mean(torch.sum(dist.entropy(), dim=1))
         objective = torch.mean(torch.exp(log_probs - old_log_probs)*gaes)
-        return objective
+        objective += self.ent_coeff*(entropy/self.action_dim)
+        return objective, entropy
 
     def getKL(self, states, old_means, old_stds):
         means, log_stds, stds = self.policy(states)
